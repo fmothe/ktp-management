@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # PostgreSQL Database
   db:
@@ -26,7 +28,8 @@ services:
     container_name: ktp-league-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-ktpleague}:${POSTGRES_PASSWORD:-ktpleague_secret}@db:5432/${POSTGRES_DB:-ktpleague}
+      # DATABASE_URL: postgresql://${POSTGRES_USER:-ktpleague}:${POSTGRES_PASSWORD:-ktpleague_secret}@db:5432/${POSTGRES_DB:-ktpleague}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://ktpleague:ktpleague_secret@db:5432/ktpleague}
       SECRET_KEY: ${SECRET_KEY:-your-super-secret-key-change-in-production}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:3000,http://localhost:5173}
     ports:

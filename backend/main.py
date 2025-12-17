@@ -1,7 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from sqlalchemy import text
 import os
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from database import engine, Base, SessionLocal
 from models import User, Team, Player, Match, PlayerMatchStats
@@ -11,39 +16,47 @@ from routes import auth, teams, players, matches, stats
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    Base.metadata.create_all(bind=engine)
-    
-    # Create default admin user if not exists
-    db = SessionLocal()
     try:
-        admin = db.query(User).filter(User.username == "admin").first()
-        if not admin:
-            admin_user = User(
-                username="admin",
-                password_hash=get_password_hash("admin"),
-                is_admin=True
-            )
-            db.add(admin_user)
-            db.commit()
-            print("Default admin user created (username: admin, password: admin)")
+        logger.info("Starting KTP League API...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/verified")
         
-        # Create FREE AGENTS team if not exists
-        free_agents = db.query(Team).filter(Team.is_free_agents == True).first()
-        if not free_agents:
-            free_agents_team = Team(
-                name="FREE AGENTS",
-                tag="FA",
-                is_free_agents=True
-            )
-            db.add(free_agents_team)
-            db.commit()
-            print("FREE AGENTS team created")
-    finally:
-        db.close()
+        # Create default admin user if not exists
+        db = SessionLocal()
+        try:
+            admin = db.query(User).filter(User.username == "admin").first()
+            if not admin:
+                admin_user = User(
+                    username="admin",
+                    password_hash=get_password_hash("admin"),
+                    is_admin=True
+                )
+                db.add(admin_user)
+                db.commit()
+                logger.info("Default admin user created (username: admin, password: admin)")
+            
+            # Create FREE AGENTS team if not exists
+            free_agents = db.query(Team).filter(Team.is_free_agents == True).first()
+            if not free_agents:
+                free_agents_team = Team(
+                    name="FREE AGENTS",
+                    tag="FA",
+                    is_free_agents=True
+                )
+                db.add(free_agents_team)
+                db.commit()
+                logger.info("FREE AGENTS team created")
+        finally:
+            db.close()
+        
+        logger.info("KTP League API started successfully")
+    except Exception as e:
+        logger.error(f"Startup error: {e}")
+        # Don't raise - let the app start anyway so health checks can report the issue
     
     yield
     # Shutdown
-    pass
+    logger.info("Shutting down KTP League API")
 
 app = FastAPI(
     title="KTP League API",
@@ -94,7 +107,7 @@ async def health_check():
     try:
         # Test database connection
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         db_status = "healthy"
     except Exception as e:
